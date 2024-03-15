@@ -266,7 +266,7 @@ FROM players p
 WHERE t.id = (SELECT id FROM teams WHERE team_name = 'Liverpool FC')
 GROUP BY p.id, p.name, t.id, m.id
 ORDER BY goals_scored DESC
-    LIMIT 3;
+LIMIT 3;
 
 
 SELECT p.name, p.birthday, p.nationality, p.position, p.number
@@ -283,7 +283,7 @@ FROM matches m
          JOIN teams t ON g.team_id = t.id
 WHERE p.name = 'Lionel Messi';
 
-SELECT
+/*SELECT
     m.title AS match_title,
     t.team_name AS scoring_team,
     t_opponent.team_name AS opposing_team,
@@ -294,4 +294,41 @@ FROM goals g
          JOIN teams t_opponent ON
     (m.home_team_id = t_opponent.id AND g.team_id != m.home_team_id) OR
     (m.away_team_id = t_opponent.id AND g.team_id != m.away_team_id)
+WHERE g.additional_time > 0;*/
+
+-- prev one rewritten with a subquery
+SELECT m.title AS match_title,
+       t.team_name AS scoring_team,
+       (SELECT team_name FROM teams WHERE
+           (m.home_team_id = teams.id AND g.team_id != m.home_team_id) OR
+           (m.away_team_id = teams.id AND g.team_id != m.away_team_id)) AS opposing_team,
+       g.additional_time
+FROM goals g
+         JOIN teams t ON g.team_id = t.id
+         JOIN matches m ON g.match_id = m.id
 WHERE g.additional_time > 0;
+
+-- статистика по гравцям які забивають у себе вдома
+
+/*To get more practice we need to write one SELECT query, one UPDATE query, 
+  and one DELETE query for the following list of clauses:
+
+    = with non-correlated subqueries result
+  IN with non-correlated subqueries result
+  NOT IN with non-correlated subqueries result
+  EXISTS with non-correlated subqueries result
+  NOT EXISTS with non-correlated subqueries result
+  = with correlated subqueries result
+  IN with correlated subqueries result
+  NOT IN with correlated subqueries result
+  EXISTS with correlated subqueries result
+  NOT EXISTS with correlated subqueries result
+  Also, we need to write four SELECT queries that include the clause UNION / UNION ALL / INTERSECT / EXCEPT (could be separate queries or include multiple set clauses).
+
+ACC:
+
+The queries are added as a separate file pa3.sql in the Git repo
+Every query includes a human-readable comment on what it is about
+PR is prepared and the link is sent to your teacher*/
+
+SELECT 
