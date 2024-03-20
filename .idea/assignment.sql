@@ -310,25 +310,42 @@ WHERE g.additional_time > 0;
 
 -- статистика по гравцям які забивають у себе вдома
 
-/*To get more practice we need to write one SELECT query, one UPDATE query, 
-  and one DELETE query for the following list of clauses:
+SELECT *
+FROM teams
+WHERE city = (SELECT city FROM players WHERE name = 'Lionel Messi');
 
-    = with non-correlated subqueries result
-  IN with non-correlated subqueries result
-  NOT IN with non-correlated subqueries result
-  EXISTS with non-correlated subqueries result
-  NOT EXISTS with non-correlated subqueries result
-  = with correlated subqueries result
-  IN with correlated subqueries result
-  NOT IN with correlated subqueries result
-  EXISTS with correlated subqueries result
-  NOT EXISTS with correlated subqueries result
-  Also, we need to write four SELECT queries that include the clause UNION / UNION ALL / INTERSECT / EXCEPT (could be separate queries or include multiple set clauses).
 
-ACC:
+-- = with non-correlated subqueries result
+-- it selects the team that has the most victories
+SELECT
+    t.team_name
+FROM
+    teams t
+WHERE
+    t.id = (
+        SELECT team_id
+        FROM standings s
+        WHERE s.won = (
+            SELECT MAX(s.won)
+            FROM standings s
+        )
+    LIMIT 1
+    );
 
-The queries are added as a separate file pa3.sql in the Git repo
-Every query includes a human-readable comment on what it is about
-PR is prepared and the link is sent to your teacher*/
 
-SELECT 
+-- IN with non-correlated subqueries result
+-- it selects teams that have scored more than the average
+SELECT
+    t.team_name
+FROM
+    teams t
+WHERE
+    id IN (SELECT DISTINCT s.team_id
+           FROM standings s
+           GROUP BY s.team_id
+           HAVING SUM(s.points) > (SELECT AVG(total_points)
+                                   FROM (SELECT SUM(s.points) AS total_points
+                                         FROM standings s
+                                         GROUP BY s.team_id) AS avg_points
+           )
+    );
