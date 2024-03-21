@@ -1,15 +1,15 @@
 -- = with non-correlated subqueries result
 
---select
+-- select
 -- it selects the team that has the most victories
 SELECT t.team_name
 FROM teams t
-WHERE t.id = (SELECT team_id 
-            FROM standings s
-            WHERE s.won = (SELECT MAX(s.won)
-                            FROM standings s)
-            LIMIT 1
-            );
+WHERE t.id = (SELECT team_id
+              FROM standings s
+              WHERE s.won = (SELECT MAX(s.won)
+                             FROM standings s)
+    LIMIT 1
+    );
 
 -- update
 -- sets a new manager to the maximum id team
@@ -21,23 +21,31 @@ WHERE t.id = (
 );
 
 -- delete
--- 
+-- deletes the team (from the added with id more than 4) that has minimum victories
+DELETE
+FROM teams t
+WHERE t.id = (SELECT team_id
+              FROM standings s
+              WHERE team_id > 4 AND s.won = (SELECT MIN(s.won)
+                                             FROM standings s)
+    LIMIT 1
+    );
 
 -- IN with non-correlated subqueries result
 -- select
 -- it selects teams that have scored more than the average
 SELECT t.team_name
 FROM teams t
-WHERE id IN (
-        SELECT DISTINCT s.team_id
-        FROM standings s
-        GROUP BY s.team_id
-        HAVING SUM(s.points) > (SELECT AVG(total_points)
-                                FROM (SELECT SUM(s.points) AS total_points
-                                      FROM standings s
-                                      GROUP BY s.team_id)
-                                )
-        );
+WHERE t.id IN (
+    SELECT DISTINCT s.team_id
+    FROM standings s
+    GROUP BY s.team_id
+    HAVING SUM(s.points) > (SELECT AVG(total_points)
+                            FROM (SELECT SUM(s.points) AS total_points
+                                  FROM standings s
+                                  GROUP BY s.team_id)
+    )
+);
 
 -- update
 -- sets all of the 1-st teams's players to position of Forward
@@ -50,9 +58,21 @@ WHERE id IN (
 );
 
 -- delete
--- 
-    
-    
+-- deletes those teams (except first 4) that have scored less than average
+DELETE
+FROM teams t
+WHERE t.id > 4 AND t.id IN (
+    SELECT DISTINCT s.team_id
+    FROM standings s
+    GROUP BY s.team_id
+    HAVING SUM(s.points) < (SELECT AVG(total_points)
+                            FROM (SELECT SUM(s.points) AS total_points
+                                  FROM standings s
+                                  GROUP BY s.team_id)
+    )
+);
+
+
 -- NOT IN with non-correlated subqueries result
 -- select
 -- shows teams that have not had any drawns in the season of 2023/2024
@@ -78,10 +98,10 @@ WHERE id NOT IN (
     FROM standings s
     WHERE s.points > 0
 );
-    
+
 -- delete
--- 
-    
+-- delete would be similar as with IN
+
 
 -- EXISTS with non-correlated subqueries result
 -- select
@@ -106,7 +126,7 @@ WHERE EXISTS (
 );
 
 -- delete
--- 
+-- for EXISTS with non-correlated it would delete all or not delete at all
 
 
 -- NOT EXISTS with non-correlated subqueries result
@@ -131,9 +151,9 @@ WHERE NOT EXISTS (
     FROM player_team_pairs ptp
     WHERE ptp.player_id = p.id
 );
-    
+
 -- delete
--- 
+-- same for NOT EXISTS with non-correlated it would delete all or not delete at all
 
 -- = with correlated subqueries result
 -- select
@@ -141,11 +161,11 @@ WHERE NOT EXISTS (
 SELECT m.title
 FROM matches m
 WHERE (
-        SELECT COUNT(*)
-        FROM goals g
-        WHERE g.match_id = m.id AND g.team_id = m.home_team_id
-        ) 
-    = 
+          SELECT COUNT(*)
+          FROM goals g
+          WHERE g.match_id = m.id AND g.team_id = m.home_team_id
+      )
+          =
       (
           SELECT COUNT(*)
           FROM goals g
@@ -157,15 +177,17 @@ WHERE (
 UPDATE teams t
 SET manager = 'New Man'
 WHERE id = (
-    SELECT team_id
+    SELECT id
     FROM players p
-    WHERE p.team_id = t.id
+    WHERE p.id = t.id
     ORDER BY p.birthday ASC
     LIMIT 1
     );
-    
+
 -- delete
--- 
+-- deletes all players from team 5
+DELETE FROM players p
+WHERE p.id IN (SELECT ptp.player_id FROM player_team_pairs ptp WHERE ptp.team_id = 5);
 
 -- IN with correlated subqueries result
 -- shows matches where home team and away team have scored both
@@ -187,16 +209,18 @@ WHERE m.home_team_id IN (
 UPDATE teams
 SET manager = 'Spanish Leader'
 WHERE id IN (
-    SELECT team_id
+    SELECT id
     FROM players p
     WHERE p.nationality = 'Spanish'
 );
 
 
-    
+
 -- delete
--- 
-    
+-- deletes all players from teams with id more than 4
+DELETE FROM players p
+WHERE p.id IN (SELECT ptp.player_id FROM player_team_pairs ptp WHERE ptp.team_id > 4);
+
 
 -- NOT IN with correlated subqueries result
 -- shows all matches where there were no spanish players
@@ -226,9 +250,9 @@ WHERE m.home_team_id NOT IN (
 UPDATE teams t
 SET t.manager = 'Nono-dutch Manager'
 WHERE id NOT IN (
-    SELECT p.team_id
+    SELECT p.id
     FROM players p
-    JOIN player_team_pairs ptp ON ptp.player_id = p.id
+             JOIN player_team_pairs ptp ON ptp.player_id = p.id
     WHERE p.nationality = 'Dutch'
 );
 
@@ -250,7 +274,7 @@ SET t.stadium = 'Main Stadium'
 WHERE EXISTS (
     SELECT 1
     FROM matches m
-    JOIN match_days md ON m.match_day_id = md.id
+             JOIN match_days md ON m.match_day_id = md.id
     WHERE md.season_id = (SELECT MAX(id) FROM seasons)
       AND (m.home_team_id = t.id OR m.away_team_id = t.id)
 );
@@ -279,6 +303,18 @@ WHERE NOT EXISTS (
       AND (m.home_team_id = teams.id OR m.away_team_id = teams.id)
 );
 
+-- delete
+-- deletes matches where home team's id is above 4 and they have not scored any goals
+DELETE
+FROM matches m
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM goals g
+    WHERE m.home_team_id > 4
+      AND g.match_id = m.id
+      AND g.team_id = m.home_team_id
+);
+
 -- UNION
 -- selects all teams and all players available
 SELECT team_name AS name, 'Team' AS type
@@ -302,17 +338,17 @@ FROM (
 
 -- INTERSECT
 -- shows players who are also managers
-SELECT name, 'Player' AS type
+/*SELECT name, 'Player' AS type
 FROM players
-INTERSECT
+         INTERSECT
 SELECT manager, 'Manager' AS type
-FROM teams;
+FROM teams;*/
 
 -- EXCEPT
 -- players who have not scored any goals
 SELECT name, 'Player' AS type
-FROM players
+FROM players WHERE 1=1
 EXCEPT
 SELECT p.name, 'Scoring Player' AS type
 FROM players p
-JOIN goals g ON p.id = g.player_id;
+         JOIN goals g ON p.id = g.player_id;
