@@ -252,6 +252,36 @@ INSERT INTO standings (match_day_id, team_id, points, won, drawn, lost, goals_fo
                                                                                                       (10, 3, 3, 1, 0, 0, 2, 0),
                                                                                                       (10, 4, 0, 0, 1, 0, 1, 1);
 
+
+-- adding insert to use for delete
+-- Inserting additional data into the 'teams' table
+INSERT INTO teams (id, team_name, city, stadium, manager) VALUES
+                                                              (DEFAULT, 'Bayern Munich', 'Munich', 'Allianz Arena', 'Julian Nagelsmann'),
+                                                              (DEFAULT, 'Juventus', 'Turin', 'Allianz Stadium', 'Massimiliano Allegri');
+
+-- Inserting additional data into the 'players' table
+INSERT INTO players (id, name, birthday, nationality, position, number) VALUES
+                                                                            (DEFAULT, 'Robert Lewandowski', '1988-08-21', 'Polish', 'Forward', 9),
+                                                                            (DEFAULT, 'Kylian Mbappe', '1998-12-20', 'French', 'Forward', 7),
+                                                                            (DEFAULT, 'Neymar Jr', '1992-02-05', 'Brazilian', 'Forward', 10),
+                                                                            (DEFAULT, 'Eden Hazard', '1991-01-07', 'Belgian', 'Forward', 7);
+-- Inserting data into the 'player_team_pairs' table for new teams
+INSERT INTO player_team_pairs (team_id, player_id) VALUES
+                                                       (5, 9), -- Bayern Munich: Robert Lewandowski
+                                                       (5, 10), -- Bayern Munich: Kylian Mbappe
+                                                       (5, 11), -- Bayern Munich: Neymar Jr
+                                                       (5, 12), -- Bayern Munich: Eden Hazard
+                                                       (6, 13), -- Juventus: Robert Lewandowski
+                                                       (6, 14), -- Juventus: Kylian Mbappe
+                                                       (6, 15), -- Juventus: Neymar Jr
+                                                       (6, 16); -- Juventus: Eden Hazard
+
+-- Inserting data into the 'standings' table for new teams
+-- You may need to adjust match_day_id, points, won, drawn, lost, goals_for, and goals_against according to your dataset
+INSERT INTO standings (match_day_id, team_id, points, won, drawn, lost, goals_for, goals_against) VALUES
+                                                                                                      (1, 5, 0, 0, 0, 0, 0, 0), -- Bayern Munich
+                                                                                                      (1, 6, 0, 0, 0, 0, 0, 0); -- Juventus
+
 SELECT m.title, m.date_time, m.venue, th.team_name AS home_team, ta.team_name AS away_team
 FROM matches m
          INNER JOIN teams th ON m.home_team_id = th.id
@@ -266,7 +296,7 @@ FROM players p
 WHERE t.id = (SELECT id FROM teams WHERE team_name = 'Liverpool FC')
 GROUP BY p.id, p.name, t.id, m.id
 ORDER BY goals_scored DESC
-    LIMIT 3;
+LIMIT 3;
 
 
 SELECT p.name, p.birthday, p.nationality, p.position, p.number
@@ -283,7 +313,7 @@ FROM matches m
          JOIN teams t ON g.team_id = t.id
 WHERE p.name = 'Lionel Messi';
 
-SELECT
+/*SELECT
     m.title AS match_title,
     t.team_name AS scoring_team,
     t_opponent.team_name AS opposing_team,
@@ -294,4 +324,58 @@ FROM goals g
          JOIN teams t_opponent ON
     (m.home_team_id = t_opponent.id AND g.team_id != m.home_team_id) OR
     (m.away_team_id = t_opponent.id AND g.team_id != m.away_team_id)
+WHERE g.additional_time > 0;*/
+
+-- prev one rewritten with a subquery
+SELECT m.title AS match_title,
+       t.team_name AS scoring_team,
+       (SELECT team_name FROM teams WHERE
+           (m.home_team_id = teams.id AND g.team_id != m.home_team_id) OR
+           (m.away_team_id = teams.id AND g.team_id != m.away_team_id)) AS opposing_team,
+       g.additional_time
+FROM goals g
+         JOIN teams t ON g.team_id = t.id
+         JOIN matches m ON g.match_id = m.id
 WHERE g.additional_time > 0;
+
+-- статистика по гравцям які забивають у себе вдома
+
+SELECT *
+FROM teams
+WHERE city = (SELECT city FROM players WHERE name = 'Lionel Messi');
+
+
+-- = with non-correlated subqueries result
+-- it selects the team that has the most victories
+SELECT
+    t.team_name
+FROM
+    teams t
+WHERE
+    t.id = (
+        SELECT team_id
+        FROM standings s
+        WHERE s.won = (
+            SELECT MAX(s.won)
+            FROM standings s
+        )
+    LIMIT 1
+    );
+
+
+-- IN with non-correlated subqueries result
+-- it selects teams that have scored more than the average
+SELECT
+    t.team_name
+FROM
+    teams t
+WHERE
+    id IN (SELECT DISTINCT s.team_id
+           FROM standings s
+           GROUP BY s.team_id
+           HAVING SUM(s.points) > (SELECT AVG(total_points)
+                                   FROM (SELECT SUM(s.points) AS total_points
+                                         FROM standings s
+                                         GROUP BY s.team_id) AS avg_points
+           )
+    );
