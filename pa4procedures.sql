@@ -3,9 +3,9 @@
 -- creating a procedure
 DELIMITER &&
 
-CREATE PROCEDURE GetTeamInfo (IN teamName VARCHAR(255))
+CREATE PROCEDURE get_team_info_sproc (IN teamName VARCHAR(255))
 BEGIN
-    SELECT * FROM teams WHERE team_name = teamName;
+    SELECT 1 FROM teams WHERE team_name = teamName;
 END&&
  
 DELIMITER ;
@@ -15,15 +15,11 @@ DELIMITER ;
 -- it gives total count of existing players as an output
 DELIMITER &&
 
-CREATE PROCEDURE GetPlayerCount (OUT totalPlayers INT)
+CREATE PROCEDURE get_player_count_sproc (OUT total_players INT)
 BEGIN
-SELECT COUNT(*) INTO totalPlayers FROM players;
+SELECT COUNT(1) INTO total_players FROM players;
 END&&
 DELIMITER ;
-   
-SET @totalPLayers = NULL;
-CALL GetPlayerCount(@totalPlayers);
-SELECT @totalPlayers;
    
 
 
@@ -31,26 +27,22 @@ SELECT @totalPlayers;
 -- it takes player id as an IN parameter and then returns number of goals scored bt this player as an OUT parameter, but using INOUT
 DELIMITER &&
 
-CREATE PROCEDURE CalculatePlayerGoals (
+CREATE PROCEDURE calculate_player_goals_sproc (
     INOUT playerID INT
 )
 BEGIN
-    DECLARE totalGoals INT;
-SELECT COUNT(*) INTO totalGoals FROM goals WHERE player_id = playerID;
-SET playerID = totalGoals;
+    DECLARE total_goals INT;
+SELECT COUNT(1) INTO total_goals FROM goals WHERE player_id = playerID;
+SET playerID = total_goals;
 END&&
 
 DELIMITER ;
-   
-SET @param = 5;
-CALL CalculatePlayerGoals(@param);
-SELECT @param;
    
 
 ------------- TRANSACTION -------------------------
 -- if the input data about match's goals is accurate (not negative), it updates the info in "matches" table and commits
 -- else, it still updates, but after the "if" condition, it does rollback
-CREATE PROCEDURE update_match_result(
+CREATE PROCEDURE update_match_result_sproc(
     IN match_id INT,
     IN home_team_score INT,
     IN away_team_score INT
