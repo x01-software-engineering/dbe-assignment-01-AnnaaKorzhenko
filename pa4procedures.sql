@@ -15,7 +15,7 @@ DELIMITER ;
 -- it gives total count of existing players as an output
 DELIMITER &&
 
-CREATE PROCEDURE get_player_count_sproc (OUT total_players INT)
+CREATE PROCEDURE get_number_of_players_sproc (OUT total_players INT)
 BEGIN
 SELECT COUNT(1) INTO total_players FROM players;
 END&&
@@ -27,7 +27,7 @@ DELIMITER ;
 -- it takes player id as an IN parameter and then returns number of goals scored bt this player as an OUT parameter, but using INOUT
 DELIMITER &&
 
-CREATE PROCEDURE calculate_player_goals_sproc (
+CREATE PROCEDURE calculate_players_goals_sproc (
     INOUT playerID INT
 )
 BEGIN
